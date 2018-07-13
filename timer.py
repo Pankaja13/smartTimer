@@ -5,8 +5,8 @@ import atexit
 import threading
 import os
 
-# UPDATE_TIME = 60*10
-UPDATE_TIME = 20
+UPDATE_TIME = 60*10
+# UPDATE_TIME = 20
 update_list = []
 updating_list = []
 
@@ -68,9 +68,24 @@ def update_thread():
 			updating_list.append(timer_to_power)
 			print('Updating Timer ', timer_to_power)
 			pin_to_power = pins[timer_to_power]['output_pin']
+
 			GPIO.output(pin_to_power, True)
 			time.sleep(UPDATE_TIME)
 			GPIO.output(pin_to_power, False)
+
+			time.sleep(5)
+
+			GPIO.output(pin_to_power, True)
+			time.sleep(UPDATE_TIME)
+			GPIO.output(pin_to_power, False)
+
+			time.sleep(5)
+
+			GPIO.output(pin_to_power, True)
+			time.sleep(UPDATE_TIME)
+			GPIO.output(pin_to_power, False)
+
+
 			print('Powering Off Timer ', timer_to_power)
 			updating_list.pop()
 	print('Stop Thread')
@@ -79,6 +94,8 @@ def update_thread():
 def update_timers():
 
 	timer_state = {}
+
+	print('UpdateList ', updating_list, update_list)
 
 	for x in list_of_timers:
 		timer_state.update({x: False})
