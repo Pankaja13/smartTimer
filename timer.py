@@ -5,8 +5,10 @@ import atexit
 import threading
 import os
 
-UPDATE_TIME = 60*10
+# UPDATE_TIME = 60*10
+UPDATE_TIME = 20
 update_list = []
+updating_list = []
 
 try:
 	import RPi.GPIO as GPIO
@@ -59,12 +61,19 @@ run_update_thread = True
 
 
 def update_thread():
-	print('Start Threading')
+	print('Start Thread')
 	while run_update_thread:
 		while update_list:
-			print('updating!', update_list.pop())
-			time.sleep(100)
-	print('Stop Threading')
+			timer_to_power = update_list.pop()
+			updating_list.append(timer_to_power)
+			print('Updating Timer ', timer_to_power)
+			pin_to_power = pins[timer_to_power]['output_pin']
+			GPIO.output(pin_to_power, True)
+			time.sleep(UPDATE_TIME)
+			GPIO.output(pin_to_power, False)
+			print('Powering Off Timer ', timer_to_power)
+			updating_list.pop()
+	print('Stop Thread')
 
 
 def update_timers():
@@ -94,20 +103,23 @@ def update_timers():
 def set_pin(this_timer, state):
 	this_pin = pins[this_timer]['output_pin']
 
-	if state:
-		print(this_pin, ' ON')
-		GPIO.output(this_pin, True)
-	else:
-		print(this_pin, ' OFF')
-		GPIO.output(this_pin, False)
+	if this_timer not in updating_list:
+		if state:
+			print(this_timer, ' - ', this_pin, ' ON')
+			GPIO.output(this_pin, True)
+		else:
+			print(this_timer, ' - ', this_pin, ' OFF')
+			GPIO.output(this_pin, False)
 
 
 def update_filimin(channel):
-
-	if channel not in update_list:
-		update_list.append(channel)
-	else:
-		print('Already updating')
+	for x in pins:
+		if channel == pins[x]['input_pin']:
+			timer_to_power = x
+			if timer not in update_list:
+				update_list.append(timer_to_power)
+			else:
+				print('Already updating')
 
 
 @atexit.register
@@ -126,7 +138,7 @@ for each_timer in pins:
 print('Setting Input Pins\n\n')
 for each_timer in pins:
 	GPIO.setup(pins[each_timer]['input_pin'], GPIO.IN, pull_up_down=GPIO.PUD_UP)
-	GPIO.add_event_detect(pins[each_timer]['input_pin'], GPIO.FALLING, callback=update_filimin)
+	GPIO.add_event_detect(pins[each_timer]['input_pin'], GPIO.FALLING, callback=update_filimin, bouncetime=1000)
 
 threading.Thread(target=update_thread).start()
 
