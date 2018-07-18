@@ -5,10 +5,12 @@ import atexit
 import threading
 import os
 
+
 UPDATE_TIME = 60*10
 # UPDATE_TIME = 20
 update_list = []
 updating_list = []
+run_update_thread = True
 
 try:
 	import RPi.GPIO as GPIO
@@ -57,9 +59,6 @@ for each_timer_row in times_list:
 list_of_timers = list(set(list_of_timers))
 
 
-run_update_thread = True
-
-
 def update_thread():
 	print('Start Thread')
 	while run_update_thread:
@@ -84,7 +83,6 @@ def update_thread():
 			GPIO.output(pin_to_power, True)
 			time.sleep(UPDATE_TIME)
 			GPIO.output(pin_to_power, False)
-
 
 			print('Powering Off Timer ', timer_to_power)
 			updating_list.pop()
@@ -122,10 +120,10 @@ def set_pin(this_timer, state):
 
 	if this_timer not in updating_list:
 		if state:
-			print(this_timer, ' - ', this_pin, ' ON')
+			# print(this_timer, ' - ', this_pin, ' ON')
 			GPIO.output(this_pin, True)
 		else:
-			print(this_timer, ' - ', this_pin, ' OFF')
+			# print(this_timer, ' - ', this_pin, ' OFF')
 			GPIO.output(this_pin, False)
 
 
@@ -143,9 +141,9 @@ def update_filimin(channel):
 def goodbye():
 	global run_update_thread
 	run_update_thread = False
-	print("Resetting GPIO")
+	print("Resetting GPIO and quitting")
 	GPIO.cleanup()
-	os._exit(1)
+	os._exit(0)
 
 
 print('Setting Output Pins')
@@ -157,9 +155,16 @@ for each_timer in pins:
 	GPIO.setup(pins[each_timer]['input_pin'], GPIO.IN, pull_up_down=GPIO.PUD_UP)
 	GPIO.add_event_detect(pins[each_timer]['input_pin'], GPIO.FALLING, callback=update_filimin, bouncetime=1000)
 
-threading.Thread(target=update_thread).start()
+
+# Starting update thread
+this_thread = threading.Thread(target=update_thread, daemon=True)
+this_thread.start()
+
 
 print('Starting Loop')
 while True:
-	update_timers()
-	time.sleep(10)
+	try:
+		update_timers()
+		time.sleep(60)
+	except KeyboardInterrupt:
+		goodbye()
